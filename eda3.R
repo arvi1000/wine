@@ -66,33 +66,85 @@ lapply(chk_points, function(x) {
 
 rm(chk_points)
 
-# assemble basic data for the review set of interest
-model_data <-
-  merge(user_diversity[user_N>=30 & max_v_share <= 0.25, .(review_userid)],
-        wine[, .(review_userid, review_username, 
-                 wine_wineid, varietal, 
-                 review_points)],
-        by='review_userid')
+# global r sq func
+piece_fit <- function(max_v_share_thresh=0.25,
+                        min_reviews=30,
+                        which_scores=1:10,
+                        which_varietals=1:16) {
+  
+  # assemble basic data for the review set of interest:
+  model_data <- merge(
+    
+    # a) data from users meeting min_reviews/max_v_share_thresh
+    user_diversity[user_N>= min_reviews &  max_v_share <= max_v_share_thresh, 
+                   .(review_userid)],
+    
+    # b) reviews of varietals of interest
+    wine[varietal %in% names(my_variants)[which_varietals],
+         .(review_userid, review_username, 
+           wine_wineid, varietal, review_points)],
+    
+    by='review_userid')
+  
+  # merge in (selected) feature scores
+  model_data <- merge(model_data, 
+                      v_scores[, c(1, which_scores+1), with=F], 
+                      by='varietal')
+  
+  # assemble lm formula
+  formula_str <-
+    paste('review_points ~ ', 
+          paste(names(v_scores)[which_scores+1], collapse=' + '))
+  
+  # 1 model per user:
+  #cat('Fitting', length(unique(model_data$review_userid)), 'models...')
+  cat('Fitting models...')
+  split_models <- lapply(split(model_data, model_data$review_userid),
+                         function(x) lm(as.formula(formula_str), data=x))
+  cat('done\n')
+  
+  # global r.squared calc
+  model_data$resids <- unlist(sapply(split_models, `[`, 'residuals'))
+  tss_rss_by_model <- 
+    model_data[, .(tss=sum((review_points - mean(review_points))^2),
+                   rss=sum(resids^2)),
+               by=review_userid]
+  global_r.squared <- with(tss_rss_by_model, 1 - ( sum(rss) / sum(tss)) )
+  
+  return(list(model_data=model_data,
+              split_models=split_models,
+              tss_rss_by_model=tss_rss_by_model,
+              global_r.squared=global_r.squared))
+}
 
-# merge in feature scores
-model_data <- merge(model_data, v_scores, by='varietal')
 
+# global_r.squared w default params: 0.1164558
+my_fit <- piece_fit()
 
-# 1 model per user!
-split_models <- 
-  lapply(split(model_data, model_data$review_userid),
-         function(x) lm(review_points ~ 
-                          red + black + floral + herb + pepper + earth + 
-                          baking + leather + astringency + body,
-                        data=x))
+#
+my_fit <- piece_fit(max_v_share_thresh=.3)
 
-# global r.squared calc
-model_data$resids <- unlist(sapply(split_models, `[`, 'residuals'))
-tss_rss_by_model <- 
-  model_data[, .(tss=sum((review_points - mean(review_points))^2),
-                 rss=sum(resids^2)),
-             by=review_userid]
-global_r.squared <- with(tss_rss_by_model, 1 - ( sum(rss) / sum(tss)) )
+# which varietals are least well predicted? try leaving each one out 
+# (loo=leave one out)
+loo_v <- lapply(1:16, function(x) setdiff(1:16, x))
+loo_v_rsq <- 
+  lapply(loo_v, function(x) piece_fit(which_varietals=x)$global_r.squared)
+data.frame(varietal=v_scores$varietal, loo_rsq=unlist(loo_v_rsq))
 
-6^10^16
+# which features/scores do the least work
+loo_s <- lapply(1:10, function(x) setdiff(1:10, x))
+loo_s_rsq <- 
+  lapply(loo_s, function(x) piece_fit(which_scores=x)$global_r.squared)
+data.frame(feature=names(v_scores)[-1], loo_rsq=unlist(loo_s_rsq))
 
+# how far apart are the varietals?
+v_dist_mat <- as.matrix(dist(v_scores[, 2:11, with=F], upper=T, diag=T))
+dimnames(v_dist_mat) <- list(v_scores$varietal, v_scores$varietal)
+v_dist_mat[lower.tri(v_dist_mat)] <- NA
+diag(v_dist_mat) <- NA
+
+ggplot(melt(v_dist_mat), aes(x=Var1, y=Var2, fill=value)) +
+  geom_tile() +
+  geom_text(aes(label=round(value, 1)), size=4) +
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  scale_fill_gradient(high='#a50f15', low='#fff5f0')
