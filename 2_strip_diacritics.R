@@ -52,5 +52,9 @@ for (i in 1:nrow(letter_subs)) {
   }
 }
 
+# write to file
 write.csv(wine_dt, 
           file='wine_data/cellartracker_dataframe_clean.csv', row.names=FALSE)
+
+# clean up
+rm(i, win_idx, wine_df, letter_subs)

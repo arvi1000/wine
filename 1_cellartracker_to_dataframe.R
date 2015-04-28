@@ -15,7 +15,7 @@ spl <- strsplit(wine, ':')
 spl_len <- unlist(lapply(spl, length))
 spl <- spl[spl_len==2]
 
-# do we have an exact multiple of 9?
+# do we have an exact multiple of 9? should be TRUE
 trunc(length(spl) / 9) == length(spl) / 9
 
 # index of all fields and values
