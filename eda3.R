@@ -106,7 +106,7 @@ piece_fit <- function(max_v_share_thresh=0.25,
   # global r.squared calc
   model_data$resids <- unlist(sapply(split_models, `[`, 'residuals'))
   tss_rss_by_model <- 
-    model_data[, .(tss=sum((review_points - mean(review_points))^2),
+    model_data[, .(tss=sum((mean(review_points) - review_points)^2),
                    rss=sum(resids^2)),
                by=review_userid]
   global_r.squared <- with(tss_rss_by_model, 1 - ( sum(rss) / sum(tss)) )
@@ -120,16 +120,26 @@ piece_fit <- function(max_v_share_thresh=0.25,
 
 # global_r.squared w default params: 0.1164558
 my_fit <- piece_fit()
+my_fit$global_r.squared
 
-#
-my_fit <- piece_fit(max_v_share_thresh=.3)
+# when we are more tolerant of varietal-homogenous tasting sets, r_sq is 
+# slightly worse (as expected)
+piece_fit(max_v_share_thresh=.3)$global_r.squared
 
-# which varietals are least well predicted? try leaving each one out 
-# (loo=leave one out)
-loo_v <- lapply(1:16, function(x) setdiff(1:16, x))
-loo_v_rsq <- 
-  lapply(loo_v, function(x) piece_fit(which_varietals=x)$global_r.squared)
-data.frame(varietal=v_scores$varietal, loo_rsq=unlist(loo_v_rsq))
+names(v_scores)[-1]
+
+
+# which varietals are least well predicted? 
+  # 1: try leaving each one out (loo=leave one out)
+  loo_v <- lapply(1:16, function(x) setdiff(1:16, x))
+  loo_v_rsq <- 
+    lapply(loo_v, function(x) piece_fit(which_varietals=x)$global_r.squared)
+  loo_v_df <-
+    data.table(varietal=v_scores$varietal, loo_rsq=unlist(loo_v_rsq))
+  loo_v_df[order(loo_rsq),]
+  
+  # 2: MSE by varietal
+  my_fit$model_data[, .(mse=mean(resids^2)), by=varietal][order(-mse),]
 
 # which features/scores do the least work
 loo_s <- lapply(1:10, function(x) setdiff(1:10, x))
@@ -140,11 +150,11 @@ data.frame(feature=names(v_scores)[-1], loo_rsq=unlist(loo_s_rsq))
 # how far apart are the varietals?
 v_dist_mat <- as.matrix(dist(v_scores[, 2:11, with=F], upper=T, diag=T))
 dimnames(v_dist_mat) <- list(v_scores$varietal, v_scores$varietal)
-v_dist_mat[lower.tri(v_dist_mat)] <- NA
+v_dist_mat[upper.tri(v_dist_mat)] <- NA
 diag(v_dist_mat) <- NA
 
 ggplot(melt(v_dist_mat), aes(x=Var1, y=Var2, fill=value)) +
   geom_tile() +
   geom_text(aes(label=round(value, 1)), size=4) +
   theme(axis.text.x=element_text(angle=45, hjust=1)) +
-  scale_fill_gradient(high='#a50f15', low='#fff5f0')
+  scale_fill_gradient('Eucl. distance', high='#a50f15', low='#fff5f0')
