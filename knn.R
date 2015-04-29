@@ -1,9 +1,4 @@
 library(FNN)
-qwe <-
-  knn.reg(train= fold1_data[review_userid==259, names(v_scores)[-1], with=F],
-          test=  fold2_data[review_userid==259, names(v_scores)[-1], with=F],
-          y= fold1_data[review_userid==259, review_points],
-          k=3)
 
 scree <- 
   sapply(c(2:10, 29), function(k) {
@@ -27,4 +22,14 @@ scree <-
   })
 
 scree
+
+# how about for any particular users?
+knn_3nn_r.sq <-
+  sapply(users, function(u) {
+    knn.reg(train= md2[review_userid==u, names(v_scores)[-1], with=F],
+            y= md2[review_userid==u, review_points],
+            k=3)$R2Pred
+  })
+
+qplot(knn_3nn_r.sq, binwidth=0.05) + theme_bw()
 

@@ -43,3 +43,8 @@ with(fold2_data[, .(tss=sum((mean(review_points) - review_points)^2),
                     rss=sum(resids^2)), by=review_userid],
      1 - ( sum(rss) / sum(tss)) )
 
+# better for any particular users?
+fold2_data[, .(tss=sum((mean(review_points) - review_points)^2),
+               rss=sum(resids^2)), by=review_userid][
+                 , .(rsq=1-rss/tss)][, pmax(rsq, -1.05)] %>%
+  qplot(xlab='Test R^2 (2-fold validation)', binwidth=0.05)

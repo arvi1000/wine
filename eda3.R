@@ -126,9 +126,6 @@ my_fit$global_r.squared
 # slightly worse (as expected)
 piece_fit(max_v_share_thresh=.3)$global_r.squared
 
-names(v_scores)[-1]
-
-
 # which varietals are least well predicted? 
   # 1: try leaving each one out (loo=leave one out)
   loo_v <- lapply(1:16, function(x) setdiff(1:16, x))
