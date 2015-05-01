@@ -17,5 +17,8 @@ diag(v_dist_mat) <- NA
 ggplot(melt(v_dist_mat), aes(x=Var1, y=Var2, fill=value)) +
   geom_tile() +
   geom_text(aes(label=round(value, 1)), size=4) +
+  theme_bw() +
   theme(axis.text.x=element_text(angle=45, hjust=1)) +
-  scale_fill_gradient('Eucl. distance', high='#a50f15', low='#fff5f0')
+  labs(x=NULL, y=NULL, title="'Flavor Distance' between varietals") +
+  scale_fill_gradient('Euclidean\ndistance', 
+                      high='#a50f15', low='#fff5f0', na.value=NA)
