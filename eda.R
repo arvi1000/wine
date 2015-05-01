@@ -11,7 +11,7 @@ setkey(wine_dt, wine_wineid)
 
 # CDF by wine----
 freq <- wine_dt[, .N, by=wine_wineid][order(-N), N]
-cdf_df <- data.frame(y=cumsum(freq)/nrow(wine_dt), x=c(1:length(freq)))
+cdf_df <- data.frame(y=cumsum(freq)/nrow(wine_dt), x=1:length(freq))
 cdf_plot <- ggplot(cdf_df, aes(x=x/1000, y=y)) + geom_line() + theme_bw()
 
 cdf_plot + 

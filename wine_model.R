@@ -168,14 +168,3 @@ loo_s_rsq <-
   lapply(loo_s, function(x) piece_fit(which_scores=x)$global_r.squared)
 data.frame(feature=names(v_scores)[-1], loo_rsq=unlist(loo_s_rsq))
 
-# how far apart are the varietals?
-v_dist_mat <- as.matrix(dist(v_scores[, 2:11, with=F], upper=T, diag=T))
-dimnames(v_dist_mat) <- list(v_scores$varietal, v_scores$varietal)
-v_dist_mat[upper.tri(v_dist_mat)] <- NA
-diag(v_dist_mat) <- NA
-
-ggplot(melt(v_dist_mat), aes(x=Var1, y=Var2, fill=value)) +
-  geom_tile() +
-  geom_text(aes(label=round(value, 1)), size=4) +
-  theme(axis.text.x=element_text(angle=45, hjust=1)) +
-  scale_fill_gradient('Eucl. distance', high='#a50f15', low='#fff5f0')
