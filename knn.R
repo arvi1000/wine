@@ -22,7 +22,9 @@ scree <-
   })
 
 data.frame(k=c(2:10, 29), r_sq=scree) %>%
-  ggplot(aes(x=k, y=r_sq)) + geom_point() + geom_line() +
+  ggplot(aes(x=k, y=r_sq)) + 
+  geom_hline(yintercept=0, color='red') +
+  geom_point() + geom_line() +
   theme_bw() +
   ggtitle('Global r-square for knn_reg\n(via leave one out cross validation)')
 
