@@ -1,3 +1,4 @@
+# copy of model data, with default params
 md2 <- copy(my_fit$model_data)
 
 # sort by user + random order within users
@@ -47,4 +48,7 @@ with(fold2_data[, .(tss=sum((mean(review_points) - review_points)^2),
 fold2_data[, .(tss=sum((mean(review_points) - review_points)^2),
                rss=sum(resids^2)), by=review_userid][
                  , .(rsq=1-rss/tss)][, pmax(rsq, -1.05)] %>%
-  qplot(xlab='Test R^2 (2-fold validation)', binwidth=0.05)
+  qplot(xlab='Test R^2 (2-fold validation)', binwidth=0.05) + 
+  theme_bw() + 
+  scale_x_discrete(breaks=c(-1.05, -1, -.5, 0, .5)), 
+                   labels=c(NA, '<= -1', '-0.5', '0.0', '0.5'))

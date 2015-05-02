@@ -81,12 +81,16 @@ lapply(chk_points, function(x) {
                  .(users=.N, reviews=sum(user_N))]
   }) %>%
   rbindlist() %>%
-  cbind(max_v_share=chk_points, .)
+  cbind(max_v_share=chk_points, .) %>%
   
-#   %>% melt(id.var='max_v_share') %>%
-#   ggplot(aes(x=max_v_share, y=value)) +
-#   geom_point() + geom_line() +
-#   facet_wrap(~variable, scales='free', nrow=2)
+  melt(id.var='max_v_share') %>%
+  ggplot(aes(x=max_v_share, y=value)) +
+  geom_point() + geom_line() +
+  facet_wrap(~variable, scales='free', ncol=2) + 
+  theme_bw() + 
+  labs(y='count', x='maximum varietal share',
+       title='Cumulative distribution of users and reviews
+       by user \'review diversity\'')
 
 rm(chk_points)
 
@@ -147,8 +151,8 @@ my_fit <- piece_fit()
 my_fit$global_r.squared
 
 # when we are more tolerant of varietal-homogenous tasting sets, r_sq is 
-# slightly worse (as expected)
-piece_fit(max_v_share_thresh=.3)$global_r.squared
+# slightly worse (as expected) 0.1142933
+piece_fit(max_v_share_thresh=.35)$global_r.squared
 
 # which varietals are least well predicted? 
   # 1: try leaving each one out (loo=leave one out)
@@ -157,7 +161,18 @@ piece_fit(max_v_share_thresh=.3)$global_r.squared
     lapply(loo_v, function(x) piece_fit(which_varietals=x)$global_r.squared)
   loo_v_df <-
     data.table(varietal=v_scores$varietal, loo_rsq=unlist(loo_v_rsq))
-  loo_v_df[order(loo_rsq),]
+
+  loo_v_df[order(loo_rsq),] %>% 
+    ggplot(aes(x=factor(varietal, levels=varietal), y=loo_rsq,
+               label=round(loo_rsq, 3)))+
+      geom_bar(stat='identity', fill='grey') + 
+      geom_hline(yintercept=my_fit$global_r.squared, 
+                 linetype='dashed', color='red') +
+      geom_text(hjust=1.2,size=4) +
+      theme_bw() +
+      labs(y='Global Fit Statistic', x='Omitted Varietal') +
+      coord_flip()
+  rm(loo_v)
   
   # 2: MSE by varietal
   my_fit$model_data[, .(mse=mean(resids^2)), by=varietal][order(-mse),]
@@ -166,5 +181,17 @@ piece_fit(max_v_share_thresh=.3)$global_r.squared
 loo_s <- lapply(1:10, function(x) setdiff(1:10, x))
 loo_s_rsq <- 
   lapply(loo_s, function(x) piece_fit(which_scores=x)$global_r.squared)
-data.frame(feature=names(v_scores)[-1], loo_rsq=unlist(loo_s_rsq))
 
+data.table(feature=names(v_scores)[-1], 
+           loo_rsq=unlist(loo_s_rsq))[order(loo_rsq)] %>% 
+
+  ggplot(aes(x=factor(feature, levels=feature), y=loo_rsq,
+             label=round(loo_rsq, 3)))+
+  geom_bar(stat='identity', fill='pink') + 
+  geom_hline(yintercept=my_fit$global_r.squared, 
+             linetype='dashed', color='red') +
+  geom_text(hjust=1.2,size=4) +
+  theme_bw() +
+  labs(y='Global Fit Statistic', x='Omitted Feature') +
+  coord_flip()
+rm(loo_s)
